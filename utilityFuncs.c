@@ -4,6 +4,7 @@
 #include <unistd.h>
 #include <errno.h>
 #include <sys/wait.h>
+#include <time.h>
 #include <sys/types.h>
 #include "helpers.h"
 
@@ -18,13 +19,17 @@ void producer(int pType, int fd[2]){
     int pCount = 0; //initialize this producer's count to 0
     size_t size = 16;
     close(fd[0]);   //close read end
+    srand(time(NULL));
+//    int random = 0, max = 20, min = 1;
 
     //loop to create product
     for(int i = 0; i <= 150; i++){
         pCount++;
         data cur = {pType,pCount, 0, 0}; //initialize each element, consumer count/thread id to be updated later
-
-        unsigned int timer = 10000;//10,000 microseconds is .01s, the lower bound of our restriction. Sleeps for at least that
+//        random = (rand() % (max + 1 - min)) + min;
+//        unsigned int timer = random * 10000;    //sleep for random time
+        unsigned int timer = 10000;    //sleep for random time
+//        printf("Rand = %d\n", timer);
         if( (usleep(timer)) == -1) { //sleep
             perror("usleep in producer function");
             exit(1);
@@ -82,9 +87,7 @@ void* consumer(void* cbTemp){
                 return NULL;
             }
         }
-
-
-
+        
         //queue size decremented in deQueue
         if(cb->flag != 1)
             node = deQueue(cb->q);

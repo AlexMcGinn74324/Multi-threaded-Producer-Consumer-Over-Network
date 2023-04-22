@@ -37,7 +37,7 @@ void enQueue(struct Queue* q, int pType, int pCount, struct locks* lock){
     //=======================================LOCKED
 
     //if we're at max capacity
-    if(q->size == q->maxSize){
+    while(q->size == q->maxSize){
         pthread_cond_wait(lock->filled,lock->mutex);    //wait if it's filled
     }
 
