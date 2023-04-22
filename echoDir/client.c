@@ -5,7 +5,6 @@
 #include <unistd.h>
 #include <arpa/inet.h>	//inet_addr
 
-//only working client
 #define BUF_SIZE 2000
 
 int main(int argc , char *argv[]){
@@ -38,13 +37,12 @@ int main(int argc , char *argv[]){
     server.sin_port = htons(port);
 
     //Connect to remote server
-    if (connect(socket_desc , (struct sockaddr *)&server , sizeof(server)) < 0)
-    {
+    if (connect(socket_desc , (struct sockaddr *)&server , sizeof(server)) < 0){
         perror("Connect");
         return 1;
     }
 
-    puts("Connected\n");
+    puts("Client connection complete\n");
 
     //Send one message
 //    message = "Stuff and things!\n\0";
@@ -58,21 +56,23 @@ int main(int argc , char *argv[]){
 //    while ((numRead = read(STDIN_FILENO, buf, BUF_SIZE)) > 0)
 //        if (send(socket_desc, buf, numRead, 0) != numRead)
 
-    int n;
+    //get input from keyboard and write to socket, read it back and write to stdout
+    int numRead;
     while (fgets(buf, BUF_SIZE, stdin) != NULL) {
         write(socket_desc, buf, strlen(buf));
-        n = read(socket_desc, buf, BUF_SIZE);
-        write(1, buf, n);
+        numRead = read(socket_desc, buf, BUF_SIZE);
+        write(1, buf, numRead);
     }
+        write(socket_desc, "-1", 2);
 
-    puts("Data Send\n");
 
-    //Receive a reply from the server
+    puts("EOF received");
+
+//    Receive a reply from the server
     if( recv(socket_desc, server_reply , 2000 , 0) < 0){
         puts("recv failed");
     }else{
         puts("Reply received\n");
-
     }
     puts(server_reply);
 

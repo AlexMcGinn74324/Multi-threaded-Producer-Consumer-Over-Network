@@ -1,104 +1,80 @@
-#include <stdio.h>
-#include <sys/socket.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <string.h>
-#include <arpa/inet.h>	//inet_addr
+#include <stdio.h> // perror, printf
+#include <stdlib.h> // exit, atoi
+#include <unistd.h> // read, write, close
+#include <arpa/inet.h> // sockaddr_in, AF_INET, SOCK_STREAM, INADDR_ANY, socket etc...
+#include <string.h> // memset
+#include <errno.h>
 
-#define BUF_SIZE 2000
-void *connection_handler(void *socket_desc);
-int main(int argc , char *argv[]){
-        if(argc <= 1){
-        puts("Please input port");
+#define BUF_SIZE 1000
+
+//code from https://mohsensy.github.io/programming/2019/09/25/echo-server-and-client-using-sockets-in-c.html
+
+int main(int argc, char const *argv[]) {
+
+
+    int serverFd, clientFd;
+    struct sockaddr_in server, client;
+    unsigned int len;
+    int port = 1234;
+    char buffer[1024];
+    if (argc == 2) {
+        port = atoi(argv[1]);
+    }
+    serverFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverFd < 0) {
+        perror("Cannot create socket");
         exit(1);
     }
-    int port = atoi(argv[1]);
-    int socket_desc , new_socket , c;
-    struct sockaddr_in server , client;
-    char outMessage[2000] = "I have received your message";
-    char inMessage[BUF_SIZE];
-    ssize_t numRead;
-
-    //Create socket
-    socket_desc = socket(AF_INET , SOCK_STREAM , 0);
-    if (socket_desc == -1)
-    {
-        printf("Could not create socket");
-    }
-
-    //Prepare the sockaddr_in structure
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
     server.sin_port = htons(port);
-
-    //Bind
-    if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0){
-        perror("Bind failed");
-        exit(1);
+    len = sizeof(server);
+    if (bind(serverFd, (struct sockaddr *)&server, len) < 0) {
+        perror("Cannot bind sokcet");
+        exit(2);
     }
-    puts("bind done");
-
-    //Listen
-    listen(socket_desc , 10);
-
-    //Accept and incoming connection
-    puts("Waiting for incoming connections...");
-    c = sizeof(struct sockaddr_in);
-    new_socket = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c);
-    if (new_socket<0){
-        perror("accept failed");
+    if (listen(serverFd, 10) < 0) {
+        perror("Listen error");
+        exit(3);
     }
+    while (1) {
+        len = sizeof(client);
+        printf("waiting for clients\n");
+        if ((clientFd = accept(serverFd, (struct sockaddr *)&client, &len)) < 0) {
+            perror("accept error");
+            exit(4);
+        }
+        char *client_ip = inet_ntoa(client.sin_addr);
+        printf("Accepted new connection from a client %s:%d\n\n", client_ip, ntohs(client.sin_port));
+        memset(buffer, 0, sizeof(buffer));
 
-    puts("Connection accepted");
+//        int size = read(clientFd, buffer, sizeof(buffer));
+//        if ( size < 0 ) {
+//            perror("read error");
+//            exit(5);
+//        }
+//        printf("received %s from client\n", buffer);
+//        if (write(clientFd, buffer, size) < 0) {
+//            perror("write error");
+//            exit(6);
+//        }
 
-//    connection_handler((void*)(&new_socket));
+        char buf[BUF_SIZE];
+        ssize_t numRead;
+        while ((numRead = read(clientFd, buf, BUF_SIZE)) > 0) {
+            write(1, buf, numRead); //write to stdout
 
-    write(new_socket, &outMessage,2000);
+            //write to client what we read
+            if (write(clientFd, buf, numRead) != numRead) {
+                perror("write");
+                exit(EXIT_FAILURE);
+            }
+//            printf("numRead: %zu\n", numRead);
+        }
 
-    while ((numRead = read(new_socket, inMessage, BUF_SIZE)) > 0)
-        if (write(STDOUT_FILENO, inMessage, numRead) != numRead)
-            perror("write");
-//    inMessage[count] = '\0';
-//    printf("%s\n", inMessage);
-
-
-    return 0;
-}
-void *connection_handler(void *socket_desc)
-{
-
-    //Get the socket descriptor
-    int sock = *(int*)socket_desc;
-    printf("Socket descriptor: %d\n", sock);
-    int read_size;
-    char *message , client_message[2000];
-
-    //Send some messages to the client
-    message = "Greetings! I am your connection handler\n";
-    write(sock , message , strlen(message));
-
-    message = "Now type something and i shall repeat what you type \n";
-    write(sock , message , strlen(message));
-
-    //Receive a message from client
-    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
-    {
-        //Send the message back to client
-        write(sock , client_message , strlen(client_message));
+        printf("%zu\n", write(clientFd, "Service Complete", 100));
+        close(clientFd);
     }
-
-    if(read_size == 0)
-    {
-        puts("Client disconnected");
-        fflush(stdout);
-    }
-    else if(read_size == -1)
-    {
-        perror("recv failed");
-    }
-
-    //Free the socket pointer
-    free(socket_desc);
-
+    close(serverFd);
     return 0;
 }
