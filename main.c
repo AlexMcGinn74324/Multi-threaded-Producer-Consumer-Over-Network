@@ -8,10 +8,20 @@
 #include <sys/stat.h>
 #include <pthread.h>
 #include <fcntl.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <errno.h>
 #include "helpers.h"
+//================================Left off
+/* Was able to connect to 1 client and accept a single message
+ *
+ * Other:
+ * Probably shouldn't be closing client/server fd during/after while loop
+ */
 //=============================Constants
 #define MAX1 60
 #define MAX2 75
+#define BUF_SIZE 4096
 //===============buffers
 struct Queue* q1;
 struct Queue* q2;
@@ -43,7 +53,6 @@ void distributor(int* fd);
  * thread, which again takes items from the pipe and adds them to our buffer (asynchr
  * -onously), before returning to join/reap child threads/processes.  */
 int main(int argc, char* argv[]){
-    int fd[2];  //single pipe
     q1 = createQueue(MAX1);   //creates queue, assigns front and rear to NULL
     q2 = createQueue(MAX2);
     pthread_t c1, c3;
@@ -55,22 +64,6 @@ int main(int argc, char* argv[]){
     lock2.filled = &filled2;
     lock2.empty = &empty2;
     lock2.mutex = &mutex2;
-
-    pipe(fd);   //pipe for communicating between producers/distributor
-    int prod1 = 0, prod2 = 0;
-
-    if( (prod1 = fork()) == -1){
-        perror("fork #1 in main");
-        exit(1);
-    }else if(prod1 == 0){
-        producer(1, fd);    //type 1
-    }
-    if( (prod1 > 0) && (prod2 = fork()) == -1){
-        perror("fork #1 in main");
-        exit(1);
-    }else if(prod2 == 0){
-        producer(2, fd);    //PRODUCERS EXIT IN FUNCTION
-    }
 
     cb1 = (struct consumerBundle*)malloc(sizeof(struct consumerBundle));
     cb1->q = q1;
@@ -85,45 +78,112 @@ int main(int argc, char* argv[]){
     cb2->flag = 0;  //we haven't received kill signal
     cb2->cNum = 1;
     cb2->fMutex = &fMutex;
+    //======================Socket Code
+    int serverFd, clientFd;
+    struct sockaddr_in server, client;
+    int port = 1234, connections = 0;    //default port, connection counter
+    unsigned int len;
+    char buf[1024];
 
-    int out = open("out.txt", O_WRONLY | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO );
-    if( (dup2(out, STDOUT_FILENO)) == -1){
-        perror("dup2 in main");
+    //make sure the port is entered w/ correct # args
+    if(argc >= 2){
+        port = atoi(argv[1]);
+    }else{
+        puts("Please enter the port number");
         exit(1);
     }
 
-    //create consumer threads
-    pthread_create(&c1, NULL, consumer, ((void*)cb1));
-    pthread_create(&c2, NULL, consumer, ((void*)cb1));
-    pthread_create(&c3, NULL, consumer, ((void*)cb2));
-    pthread_create(&c4, NULL, consumer, ((void*)cb2));
-
-    distributor(fd);
-    puts("Distributor finished");
-    if( (pthread_join(c1, NULL) == 0)){
-        printf("Thread 1 join successful\n");
-    }
-    if( (pthread_join(c2, NULL) == 0)){
-        printf("Thread 2 join successful\n");
-    }
-    if( (pthread_join(c3, NULL) == 0)){
-        printf("Thread 3 join successful\n");
-    }
-    if( (pthread_join(c4, NULL) == 0)){
-        printf("Thread 4 join successful\n");
-    }
-
-
-
-    //parent reaps child processes
-    if( (waitpid(prod1, NULL, 0)) == -1){
-        perror("waitpid prod1 in main");
+    //assign socket with TCP
+    serverFd = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverFd < 0) {
+        perror("Cannot create socket");
         exit(1);
     }
-    if( (waitpid(prod2, NULL, 0)) == -1){
-        perror("waitpid prod2 in main");
-        exit(1);
+
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons(port);
+    len = sizeof(server);
+
+    //bind to our server
+    if (bind(serverFd, (struct sockaddr *)&server, len) < 0) {
+        perror("Cannot bind sokcet");
+        exit(2);
     }
+    //start listening for up to 10 connections at a time
+    if (listen(serverFd, 10) < 0) {
+        perror("Listen error");
+        exit(3);
+    }
+
+    while (connections < 2) {   //keep running until we have 2 connections
+        len = sizeof(client);
+        printf("waiting for clients\n");
+
+        if ((clientFd = accept(serverFd, (struct sockaddr *)&client, &len)) < 0) {
+            perror("accept error");
+            exit(1);
+        }else{
+            connections++;
+        }
+
+        //converts client address from network byte order to string IPv4 dotted decimal
+        //returned in a statically allocated buffer, which subsequent calls will overwrite
+        char *client_ip = inet_ntoa(client.sin_addr);
+
+        //prints client ip and port
+        printf("Accepted new connection from a client %s:%d\n\n", client_ip, ntohs(client.sin_port));
+
+        memset(buf, 0, sizeof(buf));    //set size/initialize to 0
+        char buf[BUF_SIZE];
+        ssize_t numRead;
+        while ((numRead = read(clientFd, buf, BUF_SIZE)) > 0) {
+            write(1, buf, numRead); //write to stdout
+            //write to client what we read
+            if (write(clientFd, buf, numRead) != numRead) {
+                perror("write");
+                exit(EXIT_FAILURE);
+            }
+//            printf("numRead: %zu\n", numRead);
+        }
+
+//        printf("%zu\n", write(clientFd, "Service Complete", 100));
+        close(clientFd);
+    }
+    close(serverFd);
+    //run two distributor threads here
+
+
+
+    //start consumer threads withoutput redirected
+//    int out = open("out.txt", O_WRONLY | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO );
+//    if( (dup2(out, STDOUT_FILENO)) == -1){
+//        perror("dup2 in main");
+//        exit(1);
+//    }
+//
+//    //create consumer threads
+//    pthread_create(&c1, NULL, consumer, ((void*)cb1));
+//    pthread_create(&c2, NULL, consumer, ((void*)cb1));
+//    pthread_create(&c3, NULL, consumer, ((void*)cb2));
+//    pthread_create(&c4, NULL, consumer, ((void*)cb2));
+//
+//    distributor(fd);
+//    puts("Distributor finished");
+//    if( (pthread_join(c1, NULL) == 0)){
+//        printf("Thread 1 join successful\n");
+//    }
+//    if( (pthread_join(c2, NULL) == 0)){
+//        printf("Thread 2 join successful\n");
+//    }
+//    if( (pthread_join(c3, NULL) == 0)){
+//        printf("Thread 3 join successful\n");
+//    }
+//    if( (pthread_join(c4, NULL) == 0)){
+//        printf("Thread 4 join successful\n");
+//    }
+
+    if(c1 == c3 && c2 == c4);
 
     return 0;
 }

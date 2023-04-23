@@ -8,48 +8,6 @@
 #include <sys/types.h>
 #include "helpers.h"
 
-/* This function will run the producer processes. They create 'products' in a loop over 150 iterations.
- * Each iteration they send 1 product into the pipe and briefly delay (.01-.2s). The data to be sent
- * over is held inside a 'data' struct, which holds the product type, consumption thread id, product
- * count, and consumption count. */
-//input: Product type #, file descriptors
-//output: Writes the current product type/count to pipe shared with distributor
-//====================================================================================================
-void producer(int pType, int fd[2]){
-    int pCount = 0; //initialize this producer's count to 0
-    size_t size = 16;
-    close(fd[0]);   //close read end
-    srand(time(NULL));
-//    int random = 0, max = 20, min = 1;
-
-    //loop to create product
-    for(int i = 0; i <= 150; i++){
-        pCount++;
-        data cur = {pType,pCount, 0, 0}; //initialize each element, consumer count/thread id to be updated later
-//        random = (rand() % (max + 1 - min)) + min;
-//        unsigned int timer = random * 10000;    //sleep for random time
-        unsigned int timer = 10000;    //sleep for random time
-//        printf("Rand = %d\n", timer);
-        if( (usleep(timer)) == -1) { //sleep
-            perror("usleep in producer function");
-            exit(1);
-        }
-
-        if(i == 150){   //the 151st iteration
-            cur.pCount = -1;
-        }
-        if( (write(fd[1], &cur, size)) == -1){
-            perror("write in utility");
-            exit(1);
-        }
-    }
-
-    close(fd[1]);
-    //send -1 count to pipe
-
-    exit(1);
-}
-
 //==========================================================CONSUMER===================================================
 /* Input: ConsumerBundle struct (void *)
  * Output: Prints retrieved node from buffer into file (using redirection from main)
