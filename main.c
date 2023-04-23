@@ -55,8 +55,9 @@ void distributor(int* fd);
 int main(int argc, char* argv[]){
     q1 = createQueue(MAX1);   //creates queue, assigns front and rear to NULL
     q2 = createQueue(MAX2);
-    pthread_t c1, c3;
-    pthread_t c2, c4;
+    pthread_t c1, c2, c3, c4;
+    pthread_t d1, d2;   //distributor threads
+
     //=====================lock structs set
     lock1.filled = &filled1;
     lock1.empty = &empty1;
@@ -89,8 +90,7 @@ int main(int argc, char* argv[]){
     if(argc >= 2){
         port = atoi(argv[1]);
     }else{
-        puts("Please enter the port number");
-        exit(1);
+        port = 8888;
     }
 
     //assign socket with TCP
@@ -134,18 +134,25 @@ int main(int argc, char* argv[]){
         //prints client ip and port
         printf("Accepted new connection from a client %s:%d\n\n", client_ip, ntohs(client.sin_port));
 
+        pthread_create(&d1, NULL, distributor, ((void*)clientFd));
+
+
+
         memset(buf, 0, sizeof(buf));    //set size/initialize to 0
-        char buf[BUF_SIZE];
+//        char buf[BUF_SIZE];
         ssize_t numRead;
-        while ((numRead = read(clientFd, buf, BUF_SIZE)) > 0) {
-            write(1, buf, numRead); //write to stdout
+        data data = {0,0, 0, 0};
+        ssize_t dLen = sizeof(data);
+        while ((numRead = read(clientFd, &data, dLen)) > 0) {
+//            write(1, buf, numRead); //write to stdout
             //write to client what we read
-            if (write(clientFd, buf, numRead) != numRead) {
-                perror("write");
-                exit(EXIT_FAILURE);
-            }
-//            printf("numRead: %zu\n", numRead);
+//            if (write(clientFd, buf, numRead) != numRead) {
+//                perror("write");
+//                exit(EXIT_FAILURE);
+//            }
+//            printf("Count: %d\n", data.pCount);
         }
+            printf("Last count: %d\n", data.pCount);
 
 //        printf("%zu\n", write(clientFd, "Service Complete", 100));
         close(clientFd);
@@ -167,9 +174,7 @@ int main(int argc, char* argv[]){
 //    pthread_create(&c2, NULL, consumer, ((void*)cb1));
 //    pthread_create(&c3, NULL, consumer, ((void*)cb2));
 //    pthread_create(&c4, NULL, consumer, ((void*)cb2));
-//
-//    distributor(fd);
-//    puts("Distributor finished");
+
 //    if( (pthread_join(c1, NULL) == 0)){
 //        printf("Thread 1 join successful\n");
 //    }
@@ -195,14 +200,12 @@ int main(int argc, char* argv[]){
  * then takes that data and adds it to the buffer that
  * the consumer threads then write to file.
  */
-void distributor(int* fd){
+void distributor(void* fd){
     int done = 0;
     data new = {0, 0, 0, 0};
 
-    if( (close(fd[1])) == -1){  //close write end
-        perror("Close in distributor");
-        exit(1);
-    }
+    int sd
+
 
     //continue to read until both sentinel values are sent
     while(done < 2){

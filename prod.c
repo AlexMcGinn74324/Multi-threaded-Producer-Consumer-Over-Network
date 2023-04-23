@@ -41,8 +41,7 @@ int main(int argc, char* argv[]){
     if(argc > 1)    //convert port number to int
         port = atoi(argv[1]);
     else{
-        puts("Please enter a port number!!");
-        exit(1);
+        port = 8888;
     }
 
     //Create socket
@@ -69,41 +68,46 @@ int main(int argc, char* argv[]){
 
     puts("Client connection complete\n");
 
-//    Send one message
-    char* message = "Stuff and things!\n\0";
-    if( send(socket_desc , message , strlen(message) , 0) < 0){
-        puts("Send failed");
-        return 1;
-    }
+//    Test: Send one message
+//    char* message = "Stuff and things!\n\0";
+//    if( send(socket_desc , message , strlen(message) , 0) < 0){
+//        puts("Send failed");
+//        return 1;
+//    }
 
 
-//    //loop to create product
-//    for(int i = 0; i <= 150; i++){
-//        pCount++;
-//        data cur = {pType,pCount, 0, 0}; //initialize each element, consumer count/thread id to be updated later
-//
-////        Generate random numbers between .01-.2s
-////        random = (rand() % (max + 1 - min)) + min;
-////        unsigned int timer = random * 10000;
-////        printf("Rand = %d\n", timer);
-//
-//        unsigned int timer = 10000;    //temp code to save time
-//        if( (usleep(timer)) == -1) { //sleep
-//            perror("usleep in producer function");
+    //loop to create product
+    for(int i = 0; i <= 150; i++){
+        pCount++;
+        data cur = {pType,pCount, 0, 0}; //initialize each element, consumer count/thread id to be updated later
+
+//        Generate random numbers between .01-.2s
+//        random = (rand() % (max + 1 - min)) + min;
+//        unsigned int timer = random * 10000;
+//        printf("Rand = %d\n", timer);
+
+        unsigned int timer = 10000;    //temp code to save time
+        if( (usleep(timer)) == -1) { //sleep
+            perror("usleep in producer function");
+            exit(1);
+        }
+
+        printf("%d\n", cur.pCount);
+
+        if(i == 150){   //the 151st iteration
+            cur.pCount = -1;
+        }
+        int len = sizeof(cur);
+        if( send(socket_desc , &cur , len , 0) < 0){
+            puts("Send failed");
+            return 1;
+        }
+        //WRITE TO SOCKET DESCRIPTOR
+//        if( (write(sd, &cur, size)) == -1){
+//            perror("write in utility");
 //            exit(1);
 //        }
-//
-//        printf("%d\n", cur.pCount);
-//
-//        if(i == 150){   //the 151st iteration
-//            cur.pCount = -1;
-//        }
-//        //WRITE TO SOCKET DESCRIPTOR
-////        if( (write(sd, &cur, size)) == -1){
-////            perror("write in utility");
-////            exit(1);
-////        }
-//    }
+    }
 
     if(size == 0 && server_reply == NULL && buf == NULL && pType == pCount);  //nullify errors
 

@@ -20,13 +20,15 @@ int main(int argc, char const *argv[]) {
     if (argc == 2) {
         port = atoi(argv[1]);
     }
+    //use tcp/IPv4
     serverFd = socket(AF_INET, SOCK_STREAM, 0);
     if (serverFd < 0) {
         perror("Cannot create socket");
         exit(1);
     }
     server.sin_family = AF_INET;            //use IPv4 addresses
-    server.sin_addr.s_addr = INADDR_ANY;    //use any ip address on our host
+    server.sin_addr.s_addr = htonl(INADDR_ANY);    //use any ip address on our host
+    printf("Port: %d\n", port);
     server.sin_port = htons(port);          //converts from host byte to network-byte order
     len = sizeof(server);
 
