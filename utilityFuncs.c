@@ -10,7 +10,8 @@
 
 //==========================================================CONSUMER===================================================
 /* Input: ConsumerBundle struct (void *)
- * Output: Prints retrieved node from buffer into file (using redirection from main)
+ * Output: writes retrieved node from buffer into file (using redirection from main)
+ * Writes the product type, count, current size of buffer, consumption count, and the thread ID that is writing it
 
  * The Consumer thread process uses locks and condition variables to
  * provide asynchronous operations on the shared buffer and file. We
@@ -18,7 +19,7 @@
  * allows us to sleep while the buffer is empty and wake the distributor
  * once we have entered values into it. There was a problem with notifying
  * the second thread that the first had finished, which we solved using a
- * flag inside of the consumer bundle struct.
+ * flag inside the consumer bundle struct.
  */
 void* consumer(void* cbTemp){
     struct consumerBundle *cb = (struct consumerBundle *) cbTemp;   //transferring address isn't a race condition
