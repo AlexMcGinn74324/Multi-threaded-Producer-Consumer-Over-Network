@@ -28,9 +28,9 @@
 //output: Writes the current product type/count to socket shared with distributor threads
 //====================================================================================================
 int main(int argc, char* argv[]){
-//    int random = 0, max = 20, min = 1; //~~~~~~~~~~REINITIALIZE THIS!!!!!!!!~~~~~~~~~
-//    srand(time(NULL));
-    int port = -1, pType = 0, pCount = 0; //product type and current count
+    int random = 0, max = 20, min = 1; //~~~~~~~~~~REINITIALIZE THIS!!!!!!!!~~~~~~~~~
+    srand(time(NULL));
+    int port = 8888, pType = -1, pCount = 0; //product type and current count
     size_t size = 16;   //size of data struct
     //socket variables
     int socket_desc;
@@ -38,11 +38,11 @@ int main(int argc, char* argv[]){
     char buf[BUF_SIZE];
     char server_reply[BUF_SIZE];
 
-    if(argc > 1)    //convert port number to int
+    if(argc > 2){
         port = atoi(argv[1]);
-    else{
-        port = 8888;
-    }
+        pType = atoi(argv[2]);
+    }    //convert port number to int
+
 
     //Create socket
     socket_desc = socket(AF_INET , SOCK_STREAM , 0);
@@ -82,11 +82,11 @@ int main(int argc, char* argv[]){
         data cur = {pType,pCount, 0, 0}; //initialize each element, consumer count/thread id to be updated later
 
 //        Generate random numbers between .01-.2s
-//        random = (rand() % (max + 1 - min)) + min;
-//        unsigned int timer = random * 10000;
+        random = (rand() % (max + 1 - min)) + min;
+        unsigned int timer = random * 10000;
 //        printf("Rand = %d\n", timer);
 
-        unsigned int timer = 10000;    //temp code to save time
+//        unsigned int timer = 10000;    //temp code to save time
         if( (usleep(timer)) == -1) { //sleep
             perror("usleep in producer function");
             exit(1);
@@ -111,5 +111,4 @@ int main(int argc, char* argv[]){
 
     if(size == 0 && server_reply == NULL && buf == NULL && pType == pCount);  //nullify errors
 
-    exit(0);
 }

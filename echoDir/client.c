@@ -28,13 +28,13 @@ int main(int argc , char *argv[]){
     }
 
     //converts host add from IPv4 numbers and dot notation into binary data in network byte order
-    server.sin_addr.s_addr = inet_addr("127.0.0.1");
+    server.sin_addr.s_addr = inet_addr("10.2.97.108");
 
 
-    if(inet_pton(AF_INET,"127.0.0.1", &server.sin_addr.s_addr)<=0){
-        printf("\n inet_pton error occured\n");
-        return 1;
-    }
+//    if(inet_pton(AF_INET,"127.0.0.1", &server.sin_addr.s_addr)<=0){
+//        printf("\n inet_pton error occured\n");
+//        return 1;
+//    }
 
     //Set family as TCP
     server.sin_family = AF_INET;
